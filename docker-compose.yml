@@ -1,0 +1,73 @@
+version: "3"
+
+services:
+
+  mysql:
+    container_name: project_mysql
+    image: mysql:8.2.0
+    volumes:
+      - ${MYSQL_VOLUME}:/var/lib/mysql
+
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "100m"
+            max-file: "10"
+
+    ports:
+      - "3306:3306"
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+    networks:
+      - project_network
+
+
+  backend:
+    image: backend
+    container_name: project_backend
+    build:
+      context: ./
+      dockerfile: remote.backend.Dockerfile # Jenkins 사용시 사용
+
+    ports:
+      - "8000:8000"
+      - "8080:8080"
+
+    volumes:
+      - ${SPRING_MULTIPART_PATH_VOLUME}:${SPRING_MULTIPART_PATH}
+      - ${SPRING_LOG_FILE_PATH_VOLUME}:${SPRING_LOG_FILE_PATH}
+
+
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_MULTIPART_PATH: ${SPRING_MULTIPART_PATH}
+      SPRING_LOG_FILE_PATH: ${SPRING_LOG_FILE_PATH}
+      GOV_NCP_LOCATION: ${GOV_NCP_LOCATION}
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST}
+      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT}
+      SPRING_REDIS_HOST: ${SPRING_REDIS_HOST}
+
+
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "100m"
+            max-file: "10"
+
+    depends_on:
+      - mysql
+
+    networks:
+      - project_network
+
+
+networks:
+  project_network:
+    external: true

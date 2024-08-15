@@ -1,0 +1,58 @@
+version: "3"
+
+services:
+
+  es:
+    container_name: project_es
+    build:
+      context: ./
+      dockerfile: elastic.Dockerfile
+    environment:
+      - cluster.name=docker-cluster # 클러스터명(클러스터명을 기준으로 노드가 join)
+      - node.name=project_es # 노드명
+      - discovery.type=single-node # 싱글 노드로 실행
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # 램 사용량 제한 (이거 안하면 램을 다 먹어버림)
+      - "xpack.security.enabled=false" # 보안 기능 사용 안함
+      - "bootstrap.memory_lock=true" # 메모리 락 사용
+
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ${ES_VOLUME}:/usr/share/elasticsearch/data
+      - ${ES_LOG_VOLUME}:/usr/share/elasticsearch/logs
+      - ${ES_CONFIG_VOLUME}:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ${ES_JVM_OPTIONS_VOLUME}:/usr/share/elasticsearch/config/jvm.options
+    ports:
+      - ${ES_HTTP_PORT}:9200
+      - ${ES_NODE_PORT}:9300
+    networks:
+      - project_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  kibana:
+    container_name: project_kibana
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    environment:
+      - SERVER_NAME=project_kibana
+      - ELASTICSEARCH_HOSTS=${ELASTICSEARCH_HOSTS}
+    ports:
+      - ${KIBANA_PORT}:5601
+    networks:
+      - project_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+    depends_on:
+      - es
+
+networks:
+  project_network:
+    external: true

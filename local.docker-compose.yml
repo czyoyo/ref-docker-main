@@ -1,0 +1,132 @@
+version: "3"
+
+services:
+
+  es:
+    container_name: project_es
+    build:
+        context: ./
+        dockerfile: elastic.Dockerfile
+    environment:
+      - cluster.name=docker-cluster # 클러스터명(클러스터명을 기준으로 노드가 join)
+      - node.name=project_es # 노드명
+      - discovery.type=single-node # 싱글 노드로 실행
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # 램 사용량 제한 (이거 안하면 램을 다 먹어버림)
+      - "xpack.security.enabled=false" # 보안 기능 사용 안함
+      - "bootstrap.memory_lock=true" # 메모리 락 사용
+
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ${ES_VOLUME}:/usr/share/elasticsearch/data
+      - ${ES_LOG_VOLUME}:/usr/share/elasticsearch/logs
+      - ${ES_CONFIG_VOLUME}:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ${ES_JVM_OPTIONS_VOLUME}:/usr/share/elasticsearch/config/jvm.options
+      # jvm.options 파일을 수정하기 위해 추가
+
+    ports:
+      - ${ES_HTTP_PORT}:9200
+      - ${ES_NODE_PORT}:9300
+    networks:
+      - project_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  kibana:
+    container_name: project_kibana
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    environment:
+      - SERVER_NAME=project_kibana
+      - ELASTICSEARCH_HOSTS=http://project_es:9200
+    ports:
+      - ${KIBANA_PORT}:5601
+    networks:
+      - project_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+
+  redis:
+    container_name: project_redis
+    image: redis:7.2.4
+    volumes:
+      - ${REDIS_DATA_VOLUME}:/data
+      - ${REDIS_CONFIG_VOLUME}:/usr/local/etc/redis/redis.conf
+      - ${REDIS_PID_VOLUME}:/var/run
+    ports:
+        - ${REDIS_PORT}:6379
+
+    command: redis-server /usr/local/etc/redis/redis.conf
+
+    networks:
+        - project_network
+
+    restart: always
+
+    environment:
+      - TZ=Asia/Seoul
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  mysql:
+    container_name: project_mysql
+    image: mysql:8.2.0
+    volumes:
+      - ${MYSQL_VOLUME}:/var/lib/mysql
+
+    ports:
+      - ${MYSQL_PORT}:3306
+
+    environment:
+        MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+        MYSQL_DATABASE: ${MYSQL_DATABASE}
+        MYSQL_USER: ${MYSQL_USER}
+        MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+    networks:
+        - project_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  nginx:
+    container_name: project_nginx
+    build:
+      context: ./
+      dockerfile: nginx.Dockerfile
+    volumes:
+      - ${NGINX_CONF_VOLUME}:/etc/nginx/nginx.conf
+      - ${NGINX_LOG_VOLUME}:/var/log/nginx
+      - ${REACT_PUBLIC_VOLUME}:/app/react/public
+    ports:
+      - "80:80"
+      - "443:443"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+    networks:
+      - project_network
+
+
+
+
+networks:
+  project_network:
+    driver: bridge

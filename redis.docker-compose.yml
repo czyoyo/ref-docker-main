@@ -1,0 +1,32 @@
+version: "3"
+
+services:
+  redis:
+    container_name: project_redis
+    image: redis:7.2.4
+    volumes:
+      - ${REDIS_DATA_VOLUME}:/data
+      - ${REDIS_CONFIG_VOLUME}:/usr/local/etc/redis/redis.conf
+      - ${REDIS_PID_VOLUME}:/var/run
+    ports:
+      - ${REDIS_PORT}:6379
+
+    command: redis-server /usr/local/etc/redis/redis.conf
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+    networks:
+      - project_network
+
+    restart: always
+
+    environment:
+      - TZ=Asia/Seoul
+
+networks:
+  project_network:
+    external: true

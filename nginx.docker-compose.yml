@@ -1,0 +1,28 @@
+version: "3"
+
+services:
+  nginx:
+    container_name: project_nginx
+    build:
+      context: ./
+      dockerfile: nginx.Dockerfile
+    volumes:
+      - ${NGINX_CONF_VOLUME}:/etc/nginx/nginx.conf
+      - ${NGINX_LOG_VOLUME}:/var/log/nginx
+      - ${REACT_PUBLIC_VOLUME}:/app/react/public
+    ports:
+      - "80:80"
+      - "443:443"
+
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "100m"
+            max-file: "10"
+
+    networks:
+        - project_network
+
+networks:
+  project_network:
+    external: true
